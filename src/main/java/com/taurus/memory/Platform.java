@@ -35,9 +35,8 @@ public class Platform {
             long fileOffset = unsafe.objectFieldOffset(field);
             return unsafe.getLong(buffer,fileOffset);
         } catch (NoSuchFieldException e) {
-            e.printStackTrace();
+            return -1L;
         }
-        return -1L;
     }
 
 
