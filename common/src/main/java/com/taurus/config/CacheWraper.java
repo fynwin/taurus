@@ -1,6 +1,7 @@
 package com.taurus.config;
 
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -10,10 +11,12 @@ import java.util.WeakHashMap;
  */
 public class CacheWraper implements ConfigurationReader{
     private ConfigurationReader wrap;
-    private Map<String,Object> cache = new WeakHashMap<>();
+    private Map<String,Object> cache = null;
 
     public CacheWraper(ConfigurationReader wrap) {
         this.wrap = wrap;
+        //TODO 此处需要测试高并发下的性能
+        cache = Collections.synchronizedMap(new WeakHashMap<>());
     }
 
     public ConfigurationReader unwrap(){
