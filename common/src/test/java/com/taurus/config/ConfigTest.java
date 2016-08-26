@@ -12,7 +12,7 @@ public class ConfigTest {
      * @param args
      */
     public static void main(String args[]){
-        ConfigurationReader configurationReader = ConfigurationReaderFactory.getSystemConfigurationReader();
+        ConfigurationReader configurationReader = ConfigurationReaderFactory.getSystemConfigurationReader(true);
         String testConfig = configurationReader.getString("com.taurus.config.test","no");
         System.out.println(testConfig);
     }
