@@ -15,7 +15,6 @@ public class CacheWraper implements ConfigurationReader{
 
     public CacheWraper(ConfigurationReader wrap) {
         this.wrap = wrap;
-        //TODO 此处需要测试高并发下的性能
         cache = Collections.synchronizedMap(new WeakHashMap<>());
     }
 
@@ -27,7 +26,6 @@ public class CacheWraper implements ConfigurationReader{
     public String getString(String key, String defaultValue) {
         String ret = (String)cache.get(key);
         if(ret == null){
-            System.out.println("cache miss");
             ret = wrap.getString(key,defaultValue);
             cache.putIfAbsent(key,ret);
         }
