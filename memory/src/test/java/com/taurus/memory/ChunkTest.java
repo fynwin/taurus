@@ -40,4 +40,16 @@ public class ChunkTest {
         chunk.free(id);
         Assert.assertNotEquals(id = chunk.malloc(4),-1);
     }
+
+    @Test
+    public void chunkFreeTest1(){
+        Chunk chunk = new Chunk(new Object(), 16, 4);
+        int id;
+        Assert.assertNotEquals(chunk.malloc(8),-1);
+        Assert.assertNotEquals(id = chunk.malloc(8),-1);
+        Assert.assertEquals(chunk.malloc(8),-1);
+        chunk.free(id);
+        Assert.assertNotEquals(id = chunk.malloc(8),-1);
+        chunk.printTree();
+    }
 }
