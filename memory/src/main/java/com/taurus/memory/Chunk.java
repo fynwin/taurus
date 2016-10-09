@@ -93,6 +93,21 @@ public final class Chunk<T> {
         }
     }
 
+    private void updateParentNodeFree(int id) {
+        while(id > 1){
+            int parentId = id >>> 1;
+            int val1 = pageMap[id];
+            int val2 = pageMap[id ^1];
+            if(val1 == val1){
+                pageMap[parentId] = depthMap[parentId];
+            } else {
+                int val = val1 < val2 ? val1:val2;
+                pageMap[parentId] = (byte)val;
+            }
+            id = parentId;
+        }
+    }
+
     /**
      * 分配内存
      *
@@ -111,7 +126,8 @@ public final class Chunk<T> {
     }
 
     public void free(int id) {
-
+        pageMap[id] = depthMap[id];
+        updateParentNodeFree(id);
     }
 
 

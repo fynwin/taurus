@@ -27,4 +27,17 @@ public class ChunkTest {
         Assert.assertEquals(chunk.malloc(4),-1);
         chunk.printTree();
     }
+
+    @Test
+    public void chunkFreeTest(){
+        Chunk chunk = new Chunk(new Object(), 16, 4);
+        int id;
+        Assert.assertNotEquals(chunk.malloc(4),-1);
+        Assert.assertNotEquals(chunk.malloc(4),-1);
+        Assert.assertNotEquals(chunk.malloc(4),-1);
+        Assert.assertNotEquals(id = chunk.malloc(4),-1);
+        Assert.assertEquals(chunk.malloc(4),-1);
+        chunk.free(id);
+        Assert.assertNotEquals(id = chunk.malloc(4),-1);
+    }
 }
