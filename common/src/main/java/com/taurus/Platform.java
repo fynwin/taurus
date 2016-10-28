@@ -1,4 +1,4 @@
-package com.taurus.memory;
+package com.taurus;
 
 import sun.misc.Unsafe;
 
@@ -27,6 +27,10 @@ public class Platform {
         return buffer;
     }
 
+    public static long allocateUnsafeBuffer(int size){
+       return unsafe.allocateMemory(size);
+    }
+
     public static long directBufferAddress(ByteBuffer buffer){
         Field field = null;
         try {
@@ -39,5 +43,7 @@ public class Platform {
         }
     }
 
-
+    public static Unsafe getUnsafe() {
+        return unsafe;
+    }
 }
