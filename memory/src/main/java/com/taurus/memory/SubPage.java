@@ -1,14 +1,14 @@
 package com.taurus.memory;
 
 import com.taurus.config.ConfigurationReader;
-import com.taurus.config.ConfigurationReaderFactory;
+import com.taurus.config.SystemConfigReader;
 import com.taurus.util.MathUtil;
 
 /**
  * Created by ynfeng on 2016/10/24.
  */
 public class SubPage<T> {
-    private ConfigurationReader configurationReader = ConfigurationReaderFactory.getSystemConfigurationReader(true);
+    private ConfigurationReader configurationReader = SystemConfigReader.getInstance(true);
     public SubPage<T> prev;
     public SubPage<T> next;
     private final int pageSize;

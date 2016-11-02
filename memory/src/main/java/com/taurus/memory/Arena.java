@@ -1,7 +1,7 @@
 package com.taurus.memory;
 
 import com.taurus.config.ConfigurationReader;
-import com.taurus.config.ConfigurationReaderFactory;
+import com.taurus.config.SystemConfigReader;
 import com.taurus.util.MathUtil;
 
 /**
@@ -9,7 +9,7 @@ import com.taurus.util.MathUtil;
  * 参考jemalloc
  */
 public class Arena<T> {
-    private ConfigurationReader configurationReader = ConfigurationReaderFactory.getSystemConfigurationReader(true);
+    private ConfigurationReader configurationReader = SystemConfigReader.getInstance(true);
     private final SubPage<T> subPagesTiny[];
     private final SubPage<T> subPagesSmall[];
     private final int pageSize;

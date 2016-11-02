@@ -16,22 +16,22 @@ public class SystemConfigDataSource implements ConfigurationDataSource{
     @Override
     public Integer getInt(String key) {
         String configure = get(key);
-        return (configure == null || configure.isEmpty())?null:Integer.valueOf(configure);
+        return (configure == null || configure.isEmpty()) ? null : Integer.valueOf(configure);
     }
 
     @Override
     public Boolean getBoolean(String key) {
         String configure = get(key);
-        return (configure == null || configure.isEmpty())?null:Boolean.valueOf(configure);
+        return (configure == null || configure.isEmpty()) ? null : Boolean.valueOf(configure);
     }
 
     @Override
     public Float getFloat(String key) {
         String configure = get(key);
-        return (configure == null || configure.isEmpty())?null:Float.valueOf(configure);
+        return (configure == null || configure.isEmpty()) ? null : Float.valueOf(configure);
     }
 
-    private String get(String key){
+    private String get(String key) {
         if (key == null) {
             throw new NullPointerException("key");
         }
@@ -52,9 +52,7 @@ public class SystemConfigDataSource implements ConfigurationDataSource{
                 });
             }
         } catch (Exception e) {
-            //TODO log
         }
-
         return value;
     }
 }
