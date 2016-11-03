@@ -21,7 +21,29 @@ public final class Chunk<T> {
     private final int subpageLengthShift;
     private final Arena<T> arena;
     private int freeBytes;
+    public int poolIdx;
     private final SubPage<T> subPages[];
+    public Chunk<T> head;
+    public Chunk<T> prev;
+    public Chunk<T> next;
+
+
+    /**
+     * For head.
+     */
+    public Chunk() {
+        this.pageMap = null;
+        this.depthMap = null;
+        this.unusable = 0;
+        this.pageSize = 0;
+        this.chunkSize = 0;
+        this.pageSizeShift = 0;
+        this.pageSizeOverflowMask = 0;
+        this.maxDepth = 0;
+        this.subpageLengthShift = 0;
+        this.arena = null;
+        subPages = null;
+    }
 
     /**
      * 初始化内存块
@@ -141,13 +163,17 @@ public final class Chunk<T> {
             int subpageIdx = subpageIndex(id);
             SubPage<T> subpage = subPages[subpageIdx];
             if (subpage == null) {
-                subpage = new SubPage<T>(head, pageSize, capacity, id);
+                subpage = new SubPage<T>(head, this, pageSize, capacity, id);
                 subPages[subpageIdx] = subpage;
             } else {
                 subpage.reuse();
             }
             return subpage.malloc();
         }
+    }
+
+    public void initBuf(PooledBuffer<T> buffer, long handle) {
+        buffer.init(this,handle);
     }
 
     private int subpageIndex(int id) {
@@ -162,7 +188,12 @@ public final class Chunk<T> {
             int subpageIdx = subpageIndex(id);
             SubPage<T> subpage = subPages[subpageIdx];
             subpage.free(handle);
+            //TODO 可用空间回收
         }
+    }
+
+    public int usage() {
+        return 0;
     }
 
     public String toString() {

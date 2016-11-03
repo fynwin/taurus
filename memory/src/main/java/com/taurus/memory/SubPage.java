@@ -16,6 +16,7 @@ public class SubPage<T> {
     private final int memoryMapIdx;
     private int availableCapacity;
     public final SubPage<T> head;
+    public final Chunk<T> chunk;
 
     /**
      * For head
@@ -25,14 +26,16 @@ public class SubPage<T> {
         this.capacity = 0;
         this.memoryMapIdx = 0;
         this.head = null;
+        this.chunk = null;
     }
 
-    public SubPage(SubPage<T> head, int pageSize, int capacity, int memoryMapIdx) {
+    public SubPage(SubPage<T> head, Chunk<T> chunk,int pageSize, int capacity, int memoryMapIdx) {
         this.head = head;
         this.pageSize = pageSize;
         this.capacity = capacity;
         this.memoryMapIdx = memoryMapIdx;
         this.availableCapacity = pageSize;
+        this.chunk = chunk;
     }
 
 

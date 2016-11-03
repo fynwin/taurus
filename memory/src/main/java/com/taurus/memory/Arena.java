@@ -18,7 +18,7 @@ public class Arena<T> {
     private final int tinyMaxSizeShift;
     private final int pageSizeShift;
     private final int chunkSizeShift;
-    private Chunk<T> chunk;
+    private ChunkList<T> chunkList;
 
     public Arena(int chunkSize, int pageSize) {
         this.tinyMaxSize = configurationReader.getInt("taurus.memory.tinySize", 512);
@@ -29,6 +29,7 @@ public class Arena<T> {
         this.tinyMaxSizeShift = MathUtil.log2(tinyMaxSize);
         subPagesTiny = new SubPage[MathUtil.log2(tinyMaxSize) + 1];
         subPagesSmall = new SubPage[pageSizeShift - (subPagesTiny.length - 1)];
+        chunkList = new ChunkList<T>();
         for (int i = 0; i < subPagesTiny.length; i++) {
             subPagesTiny[i] = newHead();
         }
@@ -37,17 +38,17 @@ public class Arena<T> {
         }
     }
 
-    public void malloc(UnsafeDirectBuffer buffer,int reqCapacity) {
+    public void malloc(PooledBuffer<T> buffer, int reqCapacity) {
         int capacity = MathUtil.to2N(reqCapacity);
         SubPage<T> table[];
         int idx;
         if (isTinyOrSmall(capacity)) {
             if (isTiny(capacity)) {
-                //TODO 先尝试从缓存中分分配
+                //TODO 先尝试从线程缓存中分分配
                 table = subPagesTiny;
                 idx = tinyIndex(capacity);
             } else {
-                //TODO 先尝试从缓存中分分配
+                //TODO 先尝试从线程缓存中分分配
                 table = subPagesSmall;
                 idx = smallIndex(capacity);
             }
@@ -55,22 +56,33 @@ public class Arena<T> {
             synchronized (head) {
                 SubPage<T> next = head.next;
                 if (next != head) {
-                    next.malloc();
+                    long handle = next.malloc();
+                    next.chunk.initBuf(buffer, handle);
                     return;
                 }
             }
-            //TODO 从chunk中分配一页
+            normalMalloc(buffer, capacity);
         } else if (isHuge(capacity)) {
             //TODO 超大的内存分配
         } else {
-            //TODO 从chunk中分配
+            //大于页大小的内存从chunk中分配
+            normalMalloc(buffer, capacity);
         }
     }
 
-    public void free(long handle){
+    public void normalMalloc(PooledBuffer<T> buffer, int capacity) {
+        if (chunkList.malloc(buffer, capacity)) {
+            Chunk<T> chunk = new Chunk<>(this, null, chunkSize, pageSize);
+            long handle = chunk.malloc(capacity);
+            chunk.initBuf(buffer, handle);
+            chunkList.add(chunk);
+        }
+    }
+
+    public void free(PooledBuffer<T> buffer) {
         //TODO 缓存
         //TODO 如果是超大内存不缓存直接回收
-
+        chunkList.free(buffer);
     }
 
     public SubPage<T> findHead(int capacity) {
