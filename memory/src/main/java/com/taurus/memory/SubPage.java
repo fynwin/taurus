@@ -12,28 +12,19 @@ public class SubPage<T> {
     public SubPage<T> prev;
     public SubPage<T> next;
     private final int pageSize;
-    private final int elementSize;
-    private final long bitmap[];
     private final int capacity;
-    private final int elementNum;
     private final int memoryMapIdx;
+    private int availableCapacity;
     public final SubPage<T> head;
-    private int nextAvailable;
-    private int numAvailable;
 
     /**
      * For head
      */
     public SubPage() {
         this.pageSize = 0;
-        this.elementSize = configurationReader.getInt("taurus.memory.elementSize", 16);
-        bitmap = null;
-        capacity = 0;
-        nextAvailable = 0;
-        elementNum = 0;
-        memoryMapIdx = 0;
-        head = null;
-        numAvailable = 0;
+        this.capacity = 0;
+        this.memoryMapIdx = 0;
+        this.head = null;
     }
 
     public SubPage(SubPage<T> head, int pageSize, int capacity, int memoryMapIdx) {
@@ -41,56 +32,41 @@ public class SubPage<T> {
         this.pageSize = pageSize;
         this.capacity = capacity;
         this.memoryMapIdx = memoryMapIdx;
-        this.elementSize = configurationReader.getInt("taurus.memory.elementSize", 16);
-        int elementSizeShift = MathUtil.log2(elementSize);
-        //默认bitmap数组中每个元素的64位中的一位代表一个16字节内存的使用情况
-        numAvailable = elementNum = pageSize >> elementSizeShift;
-        bitmap = new long[pageSize >> elementSizeShift >> 6];
-        nextAvailable = 0;
+        this.availableCapacity = pageSize;
     }
 
 
     public long malloc() {
-        long bitMap[] = this.bitmap;
-        long val = bitMap[nextAvailable];
-        if (val == -1 && nextAvailable < elementNum - 1) {
-            val = bitMap[++nextAvailable];
-        }
-        if (val == -1) {
+        if (availableCapacity < capacity) {
             return -1;
         }
-        int i = 0;
-        while ((val >> i++) != 0) ;
-        val |= (long) 1 << (i - 1);
-        bitMap[nextAvailable] = val;
-        if (--numAvailable == 0) {
+        availableCapacity -= capacity;
+        //当一页全部被分配完，从池中移出
+        if (availableCapacity == 0) {
             removeFromPool();
         }
-        return toHandle(nextAvailable);
+        return toHandle(capacity);
     }
 
     public void free(long handle) {
-        long bitMap[] = this.bitmap;
-        int bitMapIdx = (int) (handle >> 32) & ~(0x40000000);
-        long val = bitMap[bitMapIdx];
-        int i = 0;
-        while (((val >> i++) & 1) == 0) ;
-        val = val >> i << i;
-        bitMap[bitMapIdx] = val;
-        if (numAvailable++ == 0) {
+        int freeCapacity = ((int) (handle >>> 32)) & ~0x40000000;
+        //当一页全部被分配完后，如果有释放操作，加入池中。
+        if (availableCapacity == 0) {
             addToPool();
         }
-        if (numAvailable == elementNum) {
-            removeFromPool();
+        availableCapacity += freeCapacity;
+        //当一页全部被释放，从池中移出
+        if (availableCapacity == pageSize) {
+            //保留一个
+            if (prev != next) {
+                removeFromPool();
+            }
         }
     }
 
     public void reuse() {
-        numAvailable = elementNum;
-        nextAvailable = 0;
-        for (int i = 0; i < bitmap.length; i++) {
-            bitmap[i] = 0;
-        }
+        availableCapacity = pageSize;
+        addToPool();
     }
 
     private void addToPool() {
@@ -109,8 +85,8 @@ public class SubPage<T> {
         }
     }
 
-    private long toHandle(int bitMapIdx) {
-        return 0x4000000000000000L | (long) bitMapIdx << 32 | memoryMapIdx;
+    private long toHandle(int capacity) {
+        return 0x4000000000000000L | ((long) capacity) << 32 | memoryMapIdx;
     }
 
 }

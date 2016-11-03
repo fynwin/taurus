@@ -18,9 +18,9 @@ public class Arena<T> {
     private final int tinyMaxSizeShift;
     private final int pageSizeShift;
     private final int chunkSizeShift;
+    private Chunk<T> chunk;
 
     public Arena(int chunkSize, int pageSize) {
-        assert pageSize >= configurationReader.getInt("taurus.memory.elementSize", 16) << 6;
         this.tinyMaxSize = configurationReader.getInt("taurus.memory.tinySize", 512);
         this.pageSize = pageSize;
         this.chunkSize = chunkSize;
@@ -37,7 +37,7 @@ public class Arena<T> {
         }
     }
 
-    public void malloc(int reqCapacity) {
+    public void malloc(UnsafeDirectBuffer buffer,int reqCapacity) {
         int capacity = MathUtil.to2N(reqCapacity);
         SubPage<T> table[];
         int idx;
@@ -55,17 +55,22 @@ public class Arena<T> {
             synchronized (head) {
                 SubPage<T> next = head.next;
                 if (next != head) {
-                    //TODO 从subpage池中分配
+                    next.malloc();
                     return;
                 }
             }
-            //TODO 从chunk中分配
-
+            //TODO 从chunk中分配一页
         } else if (isHuge(capacity)) {
             //TODO 超大的内存分配
         } else {
-
+            //TODO 从chunk中分配
         }
+    }
+
+    public void free(long handle){
+        //TODO 缓存
+        //TODO 如果是超大内存不缓存直接回收
+
     }
 
     public SubPage<T> findHead(int capacity) {
