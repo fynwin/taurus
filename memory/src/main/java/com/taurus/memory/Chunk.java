@@ -19,7 +19,7 @@ public final class Chunk<T> {
     private final int pageSizeOverflowMask;
     private final int maxDepth;
     private final int subpageLengthShift;
-    private final Arena<T> arena;
+    public final Arena<T> arena;
     private int freeBytes;
     public int poolIdx;
     private final SubPage<T> subPages[];

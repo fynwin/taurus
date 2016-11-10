@@ -67,7 +67,7 @@ public class ChunkList<T> implements ChunkListMetric {
 
     public boolean free(PooledBuffer<T> pooledBuffer) {
         Chunk<T> chunk = pooledBuffer.chunk;
-        chunk.free(pooledBuffer.handler);
+        chunk.free(pooledBuffer.handle);
         int usage = chunk.usage();
         if (usage == 0) {
             remove0(chunk);
