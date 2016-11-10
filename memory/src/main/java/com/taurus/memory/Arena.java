@@ -8,7 +8,7 @@ import com.taurus.util.MathUtil;
  * Created by ynfeng on 2016/10/24.
  * 参考jemalloc
  */
-public class Arena<T> {
+public class Arena<T> implements ArenaMetric {
     private ConfigurationReader configurationReader = SystemConfigReader.getInstance(true);
     private final SubPage<T> subPagesTiny[];
     private final SubPage<T> subPagesSmall[];
@@ -28,7 +28,7 @@ public class Arena<T> {
         this.chunkSizeShift = MathUtil.log2(chunkSize);
         this.tinyMaxSizeShift = MathUtil.log2(tinyMaxSize);
         subPagesTiny = new SubPage[MathUtil.log2(tinyMaxSize) + 1];
-        subPagesSmall = new SubPage[pageSizeShift - (subPagesTiny.length - 1)];
+        subPagesSmall = new SubPage[pageSizeShift - subPagesTiny.length];
         chunkList = new ChunkList<T>();
         for (int i = 0; i < subPagesTiny.length; i++) {
             subPagesTiny[i] = newHead();
@@ -71,7 +71,7 @@ public class Arena<T> {
     }
 
     public void normalMalloc(PooledBuffer<T> buffer, int capacity) {
-        if (chunkList.malloc(buffer, capacity)) {
+        if (!chunkList.malloc(buffer, capacity)) {
             Chunk<T> chunk = new Chunk<>(this, null, chunkSize, pageSize);
             long handle = chunk.malloc(capacity);
             chunk.initBuf(buffer, handle);
@@ -101,7 +101,7 @@ public class Arena<T> {
     }
 
     private int tinyIndex(int capacity) {
-        return MathUtil.log2(capacity) + 1;
+        return MathUtil.log2(capacity);
     }
 
     private int smallIndex(int capacity) {
@@ -117,11 +117,21 @@ public class Arena<T> {
     }
 
     private boolean isSmal(int capacity) {
-        return capacity > tinyMaxSize && capacity <= pageSize;
+        return capacity > tinyMaxSize && capacity < pageSize;
     }
 
     private boolean isHuge(int capacity) {
         return capacity > chunkSize;
+    }
+
+    private int countSubpage(SubPage<T> head) {
+        int c = 0;
+        SubPage<T> next = head.next;
+        while (next != head) {
+            c++;
+            next = next.next;
+        }
+        return c;
     }
 
     private SubPage newHead() {
@@ -129,5 +139,42 @@ public class Arena<T> {
         head.next = head;
         head.prev = head;
         return head;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(chunkList.toString())
+                .append("\n")
+                .append("tinySubpage缓存:")
+                .append("\n");
+        for (int i = 0; i < subPagesTiny.length; i++) {
+            sb.append((1 << i) + "字节:");
+            sb.append(countSubpage(subPagesTiny[i]) + "个\n");
+        }
+        sb.append("\n");
+        sb.append("smallSubpage缓存:");
+        sb.append("\n");
+        for (int i = 0; i < subPagesSmall.length; i++) {
+            sb.append((1 << (i + subPagesTiny.length)) + "字节:");
+            sb.append(countSubpage(subPagesSmall[i]) + "个\n");
+        }
+
+        return sb.toString();
+    }
+
+    @Override
+    public int numOfChunks() {
+        return chunkList.totalChunkNum();
+    }
+
+    @Override
+    public int numOfTinySubpages() {
+        return 0;
+    }
+
+    @Override
+    public int numOfSmallSubpages() {
+        return 0;
     }
 }

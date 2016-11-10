@@ -29,7 +29,7 @@ public class SubPage<T> {
         this.chunk = null;
     }
 
-    public SubPage(SubPage<T> head, Chunk<T> chunk,int pageSize, int capacity, int memoryMapIdx) {
+    public SubPage(SubPage<T> head, Chunk<T> chunk, int pageSize, int capacity, int memoryMapIdx) {
         this.head = head;
         this.pageSize = pageSize;
         this.capacity = capacity;
@@ -51,7 +51,7 @@ public class SubPage<T> {
         return toHandle(capacity);
     }
 
-    public void free(long handle) {
+    public boolean free(long handle) {
         int freeCapacity = ((int) (handle >>> 32)) & ~0x40000000;
         //当一页全部被分配完后，如果有释放操作，加入池中。
         if (availableCapacity == 0) {
@@ -64,7 +64,9 @@ public class SubPage<T> {
             if (prev != next) {
                 removeFromPool();
             }
+            return true;
         }
+        return false;
     }
 
     public void reuse() {

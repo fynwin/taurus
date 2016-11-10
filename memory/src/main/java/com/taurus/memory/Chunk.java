@@ -23,7 +23,6 @@ public final class Chunk<T> {
     private int freeBytes;
     public int poolIdx;
     private final SubPage<T> subPages[];
-    public Chunk<T> head;
     public Chunk<T> prev;
     public Chunk<T> next;
 
@@ -105,6 +104,9 @@ public final class Chunk<T> {
         return id;
     }
 
+    private int runCapacity(int id) {
+        return chunkSize >> depthMap[id];
+    }
 
     private void updateParentNodeAlloc(int id) {
         /**
@@ -148,7 +150,10 @@ public final class Chunk<T> {
             return allocateSubPage(capacity);
         } else {
             int target = maxDepth - (MathUtil.log2(capacity) - pageSizeShift);
-            return allocateNode(target);
+            long handle = allocateNode(target);
+            if (handle == -1) return handle;
+            freeBytes -= runCapacity((int) handle);
+            return handle;
         }
     }
 
@@ -159,7 +164,7 @@ public final class Chunk<T> {
             int target = maxDepth;
             int id = allocateNode(target);
             if (id == -1) return -1;
-            freeBytes -= pageSize;
+            freeBytes -= runCapacity(id);
             int subpageIdx = subpageIndex(id);
             SubPage<T> subpage = subPages[subpageIdx];
             if (subpage == null) {
@@ -173,7 +178,7 @@ public final class Chunk<T> {
     }
 
     public void initBuf(PooledBuffer<T> buffer, long handle) {
-        buffer.init(this,handle);
+        buffer.init(this, handle);
     }
 
     private int subpageIndex(int id) {
@@ -182,28 +187,40 @@ public final class Chunk<T> {
 
     public void free(long handle) {
         int id = (int) handle;
-        pageMap[id] = depthMap[id];
-        updateParentNodeFree(id);
         if (handle >> 32 != 0) {
+            //释放页内的内存
             int subpageIdx = subpageIndex(id);
             SubPage<T> subpage = subPages[subpageIdx];
-            subpage.free(handle);
-            //TODO 可用空间回收
+            if (!subpage.free(handle)) {
+                return;
+            }
         }
+        freeBytes += runCapacity(id);
+        pageMap[id] = depthMap[id];
+        updateParentNodeFree(id);
     }
 
     public int usage() {
-        return 0;
+        final int freeBytes = this.freeBytes;
+        if (freeBytes == 0) {
+            return 100;
+        }
+
+        int freePercentage = (int) (freeBytes * 100L / chunkSize);
+        if (freePercentage == 0) {
+            return 99;
+        }
+        return 100 - freePercentage;
     }
 
     public String toString() {
         return new StringBuffer()
-                .append("Chunk size:")
+                .append("内存片大小:")
                 .append(chunkSize)
-                .append(" bytes")
-                .append(",pageSize:")
+                .append(" 字节")
+                .append(",页大小:")
                 .append(pageSize)
-                .append(" bytes")
+                .append(" 字节")
                 .toString();
     }
 }
