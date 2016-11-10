@@ -63,11 +63,16 @@ public class Arena<T> implements ArenaMetric {
             }
             normalMalloc(buffer, capacity);
         } else if (isHuge(capacity)) {
-            //TODO 超大的内存分配
+            hugeMalloc(buffer,capacity);
         } else {
             //大于页大小的内存从chunk中分配
             normalMalloc(buffer, capacity);
         }
+    }
+
+    public void hugeMalloc(PooledBuffer<T> buffer,int capacity){
+        Chunk<T> chunk = new Chunk<>(this, null, capacity, capacity);
+        buffer.initUnpooled(chunk);
     }
 
     public void normalMalloc(PooledBuffer<T> buffer, int capacity) {

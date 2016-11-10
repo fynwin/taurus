@@ -11,4 +11,8 @@ public class PooledBuffer<T> implements Buffer {
         this.handler = handle;
         this.chunk = chunk;
     }
+
+    public void initUnpooled(Chunk<T> chunk){
+        this.chunk = chunk;
+    }
 }
