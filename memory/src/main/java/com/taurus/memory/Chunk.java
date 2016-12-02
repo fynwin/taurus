@@ -160,21 +160,19 @@ public final class Chunk<T> {
     private long allocateSubPage(int capacity) {
         final SubPage<T>[] subPages = this.subPages;
         final SubPage<T> head = arena.findHead(capacity);
-        synchronized (head) {
-            int target = maxDepth;
-            int id = allocateNode(target);
-            if (id == -1) return -1;
-            freeBytes -= runCapacity(id);
-            int subpageIdx = subpageIndex(id);
-            SubPage<T> subpage = subPages[subpageIdx];
-            if (subpage == null) {
-                subpage = new SubPage<T>(head, this, pageSize, capacity, id);
-                subPages[subpageIdx] = subpage;
-            } else {
-                subpage.reuse();
-            }
-            return subpage.malloc();
+        int target = maxDepth;
+        int id = allocateNode(target);
+        if (id == -1) return -1;
+        freeBytes -= runCapacity(id);
+        int subpageIdx = subpageIndex(id);
+        SubPage<T> subpage = subPages[subpageIdx];
+        if (subpage == null) {
+            subpage = new SubPage<T>(head, this, pageSize, capacity, id);
+            subPages[subpageIdx] = subpage;
+        } else {
+            subpage.reuse();
         }
+        return subpage.malloc();
     }
 
     public void initBuf(PooledBuffer<T> buffer, long handle) {

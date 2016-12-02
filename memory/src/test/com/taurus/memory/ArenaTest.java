@@ -64,9 +64,14 @@ public class ArenaTest {
     @Test
     public void testChunkMalloc4() {
         PooledBuffer buffer = new PooledBuffer();
-        int allocSize = 1 << 25;
+        int allocSize = 1 << 23;
         Arena arena = new Arena(1 << 24, 1 << 13);
         arena.malloc(buffer,allocSize);
+        arena.malloc(buffer,allocSize);
+        arena.malloc(buffer,1 << 10);
+        arena.malloc(buffer,1 << 10);
+        arena.free(buffer);
+        arena.malloc(buffer,1 << 10);
         System.out.println(arena);
     }
 

@@ -63,19 +63,19 @@ public class Arena<T> implements ArenaMetric {
             }
             normalMalloc(buffer, capacity);
         } else if (isHuge(capacity)) {
-            hugeMalloc(buffer,capacity);
+            hugeMalloc(buffer, capacity);
         } else {
             //大于页大小的内存从chunk中分配
             normalMalloc(buffer, capacity);
         }
     }
 
-    public void hugeMalloc(PooledBuffer<T> buffer,int capacity){
+    private void hugeMalloc(PooledBuffer<T> buffer, int capacity) {
         Chunk<T> chunk = new Chunk<>(this, null, capacity, capacity);
         buffer.initUnpooled(chunk);
     }
 
-    public void normalMalloc(PooledBuffer<T> buffer, int capacity) {
+    private synchronized void normalMalloc(PooledBuffer<T> buffer, int capacity) {
         if (!chunkList.malloc(buffer, capacity)) {
             Chunk<T> chunk = new Chunk<>(this, null, chunkSize, pageSize);
             long handle = chunk.malloc(capacity);
@@ -84,13 +84,13 @@ public class Arena<T> implements ArenaMetric {
         }
     }
 
-    public void free(PooledBuffer<T> buffer) {
+    public synchronized void free(PooledBuffer<T> buffer) {
         //TODO 缓存
         //TODO 如果是超大内存不缓存直接回收
         chunkList.free(buffer);
     }
 
-    public SubPage<T> findHead(int capacity) {
+    protected SubPage<T> findHead(int capacity) {
         SubPage<T> table[];
         int idx;
         if (isTiny(capacity)) {
