@@ -2,9 +2,6 @@ package com.taurus.memory;
 
 import com.taurus.util.MathUtil;
 
-import java.util.Arrays;
-import java.util.Objects;
-
 /**
  * 内存管理，伙伴算法
  * Created by ynfeng on 16/8/30.
@@ -19,7 +16,7 @@ public final class Chunk<T> {
     private final int pageSizeOverflowMask;
     private final int maxDepth;
     private final int subpageLengthShift;
-    public final Arena<T> arena;
+    public final AbstractArena<T> abstractArena;
     private int freeBytes;
     public int poolIdx;
     private final SubPage<T> subPages[];
@@ -40,7 +37,7 @@ public final class Chunk<T> {
         this.pageSizeOverflowMask = 0;
         this.maxDepth = 0;
         this.subpageLengthShift = 0;
-        this.arena = null;
+        this.abstractArena = null;
         subPages = null;
     }
 
@@ -52,7 +49,7 @@ public final class Chunk<T> {
      * @param pageSize  页大小
      */
     //chunkSize = 2^{maxDepth} * pageSize
-    public Chunk(Arena<T> arena, T memory, int chunkSize, int pageSize) {
+    public Chunk(AbstractArena<T> abstractArena, T memory, int chunkSize, int pageSize) {
         int maxDepth = MathUtil.log2(chunkSize / pageSize);
         int nodeNum = 1 << (maxDepth + 1);
         this.pageSize = pageSize;
@@ -63,7 +60,7 @@ public final class Chunk<T> {
         this.pageSizeOverflowMask = ~(pageSize - 1);
         this.unusable = (byte) (maxDepth + 1);
         this.subPages = new SubPage[chunkSize / pageSize];
-        this.arena = arena;
+        this.abstractArena = abstractArena;
         freeBytes = chunkSize;
         pageMap = new byte[nodeNum];
         depthMap = new byte[nodeNum];
@@ -159,7 +156,7 @@ public final class Chunk<T> {
 
     private long allocateSubPage(int capacity) {
         final SubPage<T>[] subPages = this.subPages;
-        final SubPage<T> head = arena.findHead(capacity);
+        final SubPage<T> head = abstractArena.findHead(capacity);
         int target = maxDepth;
         int id = allocateNode(target);
         if (id == -1) return -1;

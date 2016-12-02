@@ -8,7 +8,7 @@ import com.taurus.util.MathUtil;
  * Created by ynfeng on 2016/10/24.
  * 参考jemalloc
  */
-public class Arena<T> implements ArenaMetric {
+public abstract class AbstractArena<T> implements ArenaMetric {
     private ConfigurationReader configurationReader = SystemConfigReader.getInstance(true);
     private final SubPage<T> subPagesTiny[];
     private final SubPage<T> subPagesSmall[];
@@ -20,7 +20,7 @@ public class Arena<T> implements ArenaMetric {
     private final int chunkSizeShift;
     private ChunkList<T> chunkList;
 
-    public Arena(int chunkSize, int pageSize) {
+    public AbstractArena(int chunkSize, int pageSize) {
         this.tinyMaxSize = configurationReader.getInt("taurus.memory.tinySize", 512);
         this.pageSize = pageSize;
         this.chunkSize = chunkSize;
@@ -38,8 +38,21 @@ public class Arena<T> implements ArenaMetric {
         }
     }
 
-    public void malloc(PooledBuffer<T> buffer, int reqCapacity) {
+    private SubPage newHead() {
+        SubPage<T> head = new SubPage<T>();
+        head.next = head;
+        head.prev = head;
+        return head;
+    }
+
+    public PooledBuffer malloc(int reqCapacity) {
         int capacity = MathUtil.to2N(reqCapacity);
+        PooledBuffer<T> pooledBuffer = newBuffer();
+        malloc(pooledBuffer, capacity);
+        return pooledBuffer;
+    }
+
+    private void malloc(PooledBuffer<T> buffer, int capacity) {
         SubPage<T> table[];
         int idx;
         if (isTinyOrSmall(capacity)) {
@@ -65,52 +78,8 @@ public class Arena<T> implements ArenaMetric {
         } else if (isHuge(capacity)) {
             hugeMalloc(buffer, capacity);
         } else {
-            //大于页大小的内存从chunk中分配
             normalMalloc(buffer, capacity);
         }
-    }
-
-    private void hugeMalloc(PooledBuffer<T> buffer, int capacity) {
-        Chunk<T> chunk = new Chunk<>(this, null, capacity, capacity);
-        buffer.initUnpooled(chunk);
-    }
-
-    private synchronized void normalMalloc(PooledBuffer<T> buffer, int capacity) {
-        if (!chunkList.malloc(buffer, capacity)) {
-            Chunk<T> chunk = new Chunk<>(this, null, chunkSize, pageSize);
-            long handle = chunk.malloc(capacity);
-            chunk.initBuf(buffer, handle);
-            chunkList.add(chunk);
-        }
-    }
-
-    public synchronized void free(PooledBuffer<T> buffer) {
-        //TODO 缓存
-        //TODO 如果是超大内存不缓存直接回收
-        chunkList.free(buffer);
-    }
-
-    protected SubPage<T> findHead(int capacity) {
-        SubPage<T> table[];
-        int idx;
-        if (isTiny(capacity)) {
-            table = subPagesTiny;
-            idx = tinyIndex(capacity);
-        } else if (isSmal(capacity)) {
-            table = subPagesSmall;
-            idx = smallIndex(capacity);
-        } else {
-            throw new IllegalArgumentException(String.format("capacity:%d can't allocate from subpage.", capacity));
-        }
-        return table[idx];
-    }
-
-    private int tinyIndex(int capacity) {
-        return MathUtil.log2(capacity);
-    }
-
-    private int smallIndex(int capacity) {
-        return MathUtil.log2(capacity) - tinyMaxSizeShift - 1;
     }
 
     private boolean isTinyOrSmall(int capacity) {
@@ -129,6 +98,52 @@ public class Arena<T> implements ArenaMetric {
         return capacity > chunkSize;
     }
 
+    private int tinyIndex(int capacity) {
+        return MathUtil.log2(capacity);
+    }
+
+    private int smallIndex(int capacity) {
+        return MathUtil.log2(capacity) - tinyMaxSizeShift - 1;
+    }
+
+    private void hugeMalloc(PooledBuffer<T> buffer, int capacity) {
+        Chunk<T> chunk = newUnPooledChunk(capacity, capacity);
+        buffer.initUnpooled(chunk);
+    }
+
+    private synchronized void normalMalloc(PooledBuffer<T> buffer, int capacity) {
+        if (!chunkList.malloc(buffer, capacity)) {
+            Chunk<T> chunk = newPooledChunk(chunkSize, pageSize);
+            long handle = chunk.malloc(capacity);
+            chunk.initBuf(buffer, handle);
+            chunkList.add(chunk);
+        }
+    }
+
+    public synchronized void free(PooledBuffer<T> buffer) {
+        //TODO 缓存
+        //TODO 如果是超大内存不缓存直接回收
+        if (chunkList.free(buffer)) {
+            destroyChunk(buffer.chunk);
+        }
+    }
+
+    protected SubPage<T> findHead(int capacity) {
+        SubPage<T> table[];
+        int idx;
+        if (isTiny(capacity)) {
+            table = subPagesTiny;
+            idx = tinyIndex(capacity);
+        } else if (isSmal(capacity)) {
+            table = subPagesSmall;
+            idx = smallIndex(capacity);
+        } else {
+            throw new IllegalArgumentException(String.format("capacity:%d can't allocate from subpage.", capacity));
+        }
+        return table[idx];
+    }
+
+
     private int countSubpage(SubPage<T> head) {
         int c = 0;
         SubPage<T> next = head.next;
@@ -137,13 +152,6 @@ public class Arena<T> implements ArenaMetric {
             next = next.next;
         }
         return c;
-    }
-
-    private SubPage newHead() {
-        SubPage<T> head = new SubPage<T>();
-        head.next = head;
-        head.prev = head;
-        return head;
     }
 
     @Override
@@ -167,6 +175,14 @@ public class Arena<T> implements ArenaMetric {
 
         return sb.toString();
     }
+
+    public abstract Chunk<T> newPooledChunk(int chunkSize, int pageSize);
+
+    public abstract void destroyChunk(Chunk<T> chunk);
+
+    public abstract PooledBuffer<T> newBuffer();
+
+    public abstract Chunk<T> newUnPooledChunk(int chunkSize, int pageSize);
 
     @Override
     public int numOfChunks() {
